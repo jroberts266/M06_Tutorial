@@ -1,24 +1,75 @@
 const express = require('express');
+const morgan = require('morgan');
+const mongoose = require('mongoose');
+const Blog = require('./models/blog');
 
 // express app
 const app = express();
 
+// connect to mongodb
+const dbURI = 'mongodb+srv://jroberts266:8k6zqfwFh83Uzlmk@cluster0.2bopdmj.mongodb.net/M06Tutorial'
+mongoose.connect(dbURI)
+    .then((result) => app.listen(3000))
+    .catch((err) => console.log(err));
+
 // register view engine
 app.set('view engine', 'ejs');
 
-// listen for requests
-app.listen(3000);
+// middleware & static files
+app.use(express.static('public'))
+app.use(express.urlencoded({extended: true}));
+app.use(morgan('dev'));
 
 app.get('/', (req, res) => {
-    const blogs = [
-        {title: 'Yoshi finds eggs', snippet: 'Lorme ispsum dolor sit amet consectetur'},
-        {title: 'Mario finds stars', snippet: 'Lorme ispsum dolor sit amet consectetur'},
-        {title: 'How to defeat Bowser', snippet: 'Lorme ispsum dolor sit amet consectetur'},
-    ];
-    res.render('index',{ title: "Home", blogs});
+    res.redirect('/blogs');
 })
 app.get('/about', (req, res) => {
     res.render('about',{ title: "About"});
+})
+// blog routes
+app.get('/blogs', (req, res) =>{
+    Blog.find().sort({ createdAt: -1})
+        .then((result) =>{
+            res.render('index', {title: 'All Blogs', blogs: result})
+        })
+        .catch((err) => {
+            console.log(err);
+        })
+});
+
+app.post('/blogs', (req, res) =>{
+    const blog = new Blog(req.body);
+
+    blog.save()
+    .then((result) => {
+        res.redirect('/blogs');
+    })
+    .catch((err) =>{
+        console.log(err);
+    })
+})
+
+app.get('/blogs/:id', (req, res) =>{
+    const id = req.params.id;
+    Blog.findById(id)
+    .then(result => {
+        res.render('details', {blog: result, title: 'Blog Details'});
+    })
+    .catch((err) =>{
+        console.log(err);
+    })
+})
+
+app.delete('/blogs/:id', (req, res) =>{
+    const id = req.params.id;
+
+    Blog.findByIdAndDelete(id)
+    .then(result => {
+        res.json({ redirect: '/blogs'})
+    })
+    .catch(err => {
+        console.log(err);
+    })
 })
 
 app.get('/blogs/create', (req, res) => {
